@@ -1,7 +1,7 @@
 
 const mongoose = require('mongoose');
 
-mongoose.connect('mongodb+srv://gurungrozal07:<password>@cluster0.gwwp30z.mongodb.net/');
+mongoose.connect('from mongooo db username and password');
 
 const Cat = mongoose.model('Cat', { name: String });
 
