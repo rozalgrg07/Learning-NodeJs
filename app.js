@@ -147,7 +147,7 @@ app.post("/login", (req, res) => {
           console.log("Login successful: ", user);
 
           const successHtml = `
-            <p>Product added successfully</p>
+            <p>Login successfully</p>
             <button onclick="window.location.href='/add-product'">Add Products</button>
           `;
 
