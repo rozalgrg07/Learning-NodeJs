@@ -12,7 +12,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use("/uploads", express.static("uploads"));
 
-// MySQL connection setup
+//MySQL connection setup
 const dbConfig = {
   host: "localhost",
   user: "root",
@@ -149,6 +149,7 @@ app.post("/login", (req, res) => {
           const successHtml = `
             <p>Login successfully</p>
             <button onclick="window.location.href='/add-product'">Add Products</button>
+            <button onclick="window.location.href='/update/:id'">Add Products</button>
           `;
 
           res.send(successHtml);
@@ -166,6 +167,94 @@ app.post("/login", (req, res) => {
     }
   });
 });
+
+app.get("/update/:id", (req, res) => {
+  const userId = req.params.id;
+  const query = "SELECT * FROM users WHERE id = ?";
+
+  connection.query(query, [userId], (error, results) => {
+    if (error) {
+      console.error("Error fetching user: ", error.stack);
+      res.status(500).send("Error fetching user data");
+      return;
+    }
+
+    if (results.length > 0) {
+      const user = results[0];
+      res.send(`<!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Edit Profile</title>
+                </head>
+                <body>
+                    <h1>Edit Profile</h1>
+                    <img src="${user.file_path}" alt="${user.username}" style="width: 100px; height: 100px;">
+                    <br>
+                    <form action="/update/${user.id}" method="post" enctype="multipart/form-data">
+                        <label for="username">Username:</label>
+                        <input type="text" id="username" name="username" value="${user.username}" required>
+                        <br>
+                        <label for="email">Email:</label>
+                        <input type="email" id="email" name="email" value="${user.email}" required>
+                        <br>
+                        <label for="password">New Password:</label>
+                        <input type="password" id="password" name="password" required>
+                        <br>
+                        <label for="file_path">File Path:</label>
+                        <input type="file" id="file_path" name="file_path">
+                        <br><br>
+                        <button type="submit">Update Profile</button>
+                    </form>
+                </body>
+                </html>`);
+    } else {
+      res.status(404).send("User not found");
+    }
+  });
+});
+
+// Route to handle form submission and update user data
+app.post("/update/:id", upload.single("file_path"), (req, res) => {
+  const userId = req.params.id;
+  const { username, email, password } = req.body;
+  const file = req.file;
+
+  const updateFields = { username, email };
+
+  if (file) {
+    updateFields.file_path = `/uploads/${file.filename}`;
+  }
+
+  if (password) {
+    bcrypt.hash(password, saltRounds, (err, hash) => {
+      if (err) {
+        console.error("Error hashing password: ", err.stack);
+        res.status(500).send("Error updating password");
+        return;
+      }
+      updateFields.password = hash;
+      updateUser(updateFields);
+    });
+  } else {
+    updateUser(updateFields);
+  }
+
+  function updateUser(fields) {
+    const query = "UPDATE users SET ? WHERE id = ?";
+    connection.query(query, [fields, userId], (error, results) => {
+      if (error) {
+        console.error("Error updating user: ", error.stack);
+        res.status(500).send("Error updating user data");
+        return;
+      }
+      res.send("Profile updated successfully");
+    });
+  }
+});
+
+
 
 // Route for adding product
 app.get("/add-product", (req, res) => {
@@ -353,8 +442,7 @@ app.post("/update-product/:id", upload.single("productImage"), (req, res) => {
 });
 
 
-
-// Start the server
+//Start the server
 app.listen(port, async () => {
   console.log(`Example app listening on port ${port}`);
   const open = await import('open'); // Dynamic import for 'open'
